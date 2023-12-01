@@ -43,20 +43,22 @@ fn aho_search(protein_seq_vec: Vec<String>, peptides_vec: Vec<String>, uniprot_v
     let seq_duplicate = peptides_vec.clone();
     let automaton = AhoCorasick::new(peptides_vec).unwrap();
     let uniprot_id: Vec<String> = uniprot_vec.iter().zip(protein_seq_vec.iter())
-        .filter_map(|(&item,repeat)| {
-            let mut repeated_items = std::iter::repeat(item).take(repeat.len()).collect::<Vec<_>>();
-            repeated_items.push("|".to_string());
-            repeated_items
-        })
-        .collect();
-    let mut match_dict: HashMap<&str, Vec<String>> = HashMap::new();
-    println!("{}", &seq_duplicate.len());
-    println!("{}", &uniprot_id.len())
-
-    //for mat in automaton.find_iter(&search_seq) {
-    //    match_dict.entry(&seq_duplicate[mat.pattern()]).or_insert_with(Vec::new).push(uniport_id[mat.start()].to_string());
-    //}
-    //for (key, values) in &match_dict {
-    //    println!("{}: {:?}", key, values);
-    //}
+    .flat_map(|(item, seq)| {
+        let mut repeated_items = std::iter::repeat(item.clone())
+            .take(seq.len())
+            .collect::<Vec<_>>();
+        repeated_items.push("|".to_string());
+        repeated_items
+    })
+    .collect();
+    let mut match_dict: HashMap<String, Vec<&String>> = HashMap::new();
+    println!("{}", &search_seq.len());
+    println!("{}", &uniprot_id.len());
+    println!("{}", &uniprot_id[0]);
+    for mat in automaton.find_iter(&search_seq) {
+        match_dict.entry(uniprot_id[mat.start()].to_string()).or_insert_with(Vec::new).push(&seq_duplicate[mat.pattern()]);
+    }
+    for (key, values) in &match_dict {
+        println!("{}: {:?}", key, values);
+    }
 }
