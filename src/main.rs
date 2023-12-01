@@ -1,19 +1,17 @@
 use std::fs;
-use aho_corasick::{AhoCorasick, PatternID};
+use aho_corasick::AhoCorasick;
 use csv::ReaderBuilder;
 use std::fs::File;
 use std::collections::HashMap;
 use std::io;
-use std::io::Write;
-use bokeh::{params::KERNEL9_PARAM_SET, Blur};
-use image::{io::Reader as ImageReader, ImageError};
+use plotters::prelude::*;
 
 
 fn main() -> std::io::Result<()> {
     let (uniprot_vec, protein_seq_vec) = fasta_read("UniProt_Human.fasta")?;
     let peptide_vec = psv_read("psm.tsv");
-    let match_hash = aho_search(protein_seq_vec, peptide_vec?, uniprot_vec);
-    drawing();
+    let _match_hash = aho_search(protein_seq_vec, peptide_vec?, uniprot_vec);
+    drawings();
     Ok(())
 }
 
@@ -68,13 +66,33 @@ fn aho_search(protein_seq_vec: Vec<String>, peptides_vec: Vec<String>, uniprot_v
     Ok(match_dict)
 }
 
-fn drawing() -> std::io::Result<()> {
-    let data = vec![1, 2, 3, 4, 5];
-    let mut file = File::create("data.csv")?;
-    
-    writeln!(file, "x")?;
-    for x in data {
-        writeln!(file, "{}", x)?;
-    }
+fn drawings() -> Result<(), Box<dyn std::error::Error>> {
+    let root = BitMapBackend::new("plotters-doc-data/0.png", (640, 480)).into_drawing_area();
+    root.fill(&WHITE)?;
+    let mut chart = ChartBuilder::on(&root)
+        .caption("y=x^2", ("sans-serif", 50).into_font())
+        .margin(5)
+        .x_label_area_size(30)
+        .y_label_area_size(30)
+        .build_cartesian_2d(-1f32..1f32, -0.1f32..1f32)?;
+
+    chart.configure_mesh().draw()?;
+
+    chart
+        .draw_series(LineSeries::new(
+            (-50..=50).map(|x| x as f32 / 50.0).map(|x| (x, x * x)),
+            &RED,
+        ))?
+        .label("y = x^2")
+        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED));
+
+    chart
+        .configure_series_labels()
+        .background_style(&WHITE.mix(0.8))
+        .border_style(&BLACK)
+        .draw()?;
+
+    root.present()?;
+
     Ok(())
 }
