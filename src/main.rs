@@ -1,13 +1,62 @@
 use std::fs;
+use aho_corasick::{AhoCorasick, PatternID};
+use csv::ReaderBuilder;
+use std::fs::File;
+use std::collections::HashMap;
+
+
 
 fn main() -> std::io::Result<()> {
+    let (uniprot_vec, protein_seq_vec) = fasta_read("UniProt_Human.fasta")?;
+    let peptide_vec = psv_read("psm.tsv");
+    aho_search(protein_seq_vec, peptide_vec?, uniprot_vec);
+    Ok(())
+}
+
+fn fasta_read(file_name: &str) -> std::io::Result<(Vec<String>, Vec<String>)> {
     // read the uniprot human fasta file
-    let file_content = fs::read_to_string("UniProt_Human.fasta")?;
+    let file_content = fs::read_to_string(file_name)?;
     // split vector contains the individual proteins split with \n>
     let split_vec: Vec<&str> = file_content.split("\n>").collect();
-    println!("{}", &split_vec[31]);
-    let uniprot_vec: Vec<&str> = split_vec.iter().filter_map(|&x| x.split("|").nth(1)).collect();
-    println!("{}", &uniprot_vec[31]);
-    let protein_seq_vec: Vec<&str> = split_vec.iter().filter_map(|&x| x.split("|").nth(1)).collect();
-    Ok(())
+    let uniprot_vec: Vec<String> = split_vec.iter().filter_map(|&x| x.split("|").nth(1).map(|s| s.to_string())).collect();
+    let _protein_seq_vec: Vec<String> = split_vec.iter().filter_map(|&x| {let x: Vec<&str> = x.split('\n').collect();if x.len() > 1 {Some(x[1..].join(""))} else {None}}).collect();
+    Ok((uniprot_vec, _protein_seq_vec))
+}
+
+fn psv_read(file_name: &str)  -> std::io::Result<Vec<String>> {
+    let file = File::open(file_name)?;
+    let mut tsv_rdr: csv::Reader<_> = ReaderBuilder::new().delimiter(b'\t').from_reader(file);
+    let mut peptides_vec:Vec<String> = Vec::new();
+    for result in tsv_rdr.records() {
+        let record = result?;
+                if let Some(value) = record.get(2) {
+            peptides_vec.push(value.to_string());
+        }
+    }
+
+    Ok(peptides_vec)
+    
+}
+
+fn aho_search(protein_seq_vec: Vec<String>, peptides_vec: Vec<String>, uniprot_vec: Vec<String>) {
+    let search_seq: String = protein_seq_vec.join("|"); 
+    let seq_duplicate = peptides_vec.clone();
+    let automaton = AhoCorasick::new(peptides_vec).unwrap();
+    let uniprot_id: Vec<String> = uniprot_vec.iter().zip(protein_seq_vec.iter())
+        .filter_map(|(&item,repeat)| {
+            let mut repeated_items = std::iter::repeat(item).take(repeat.len()).collect::<Vec<_>>();
+            repeated_items.push("|".to_string());
+            repeated_items
+        })
+        .collect();
+    let mut match_dict: HashMap<&str, Vec<String>> = HashMap::new();
+    println!("{}", &seq_duplicate.len());
+    println!("{}", &uniprot_id.len())
+
+    //for mat in automaton.find_iter(&search_seq) {
+    //    match_dict.entry(&seq_duplicate[mat.pattern()]).or_insert_with(Vec::new).push(uniport_id[mat.start()].to_string());
+    //}
+    //for (key, values) in &match_dict {
+    //    println!("{}: {:?}", key, values);
+    //}
 }
