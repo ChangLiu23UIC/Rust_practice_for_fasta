@@ -44,7 +44,7 @@ fn aho_search(protein_seq_vec: Vec<String>, peptides_vec: Vec<String>, uniprot_v
     let search_seq: String = protein_seq_vec.join("|"); 
     let automaton = AhoCorasick::new(&peptides_vec).unwrap();
 
-    let uniprot_id = uniprot_vec.iter().zip(protein_seq_vec.iter())
+    let uniprot_id:Vec<String> = uniprot_vec.iter().zip(protein_seq_vec.iter())
         .flat_map(|(item, seq)| {
             let mut repeated_items = std::iter::repeat(item.clone())
                 .take(seq.len())
@@ -57,8 +57,8 @@ fn aho_search(protein_seq_vec: Vec<String>, peptides_vec: Vec<String>, uniprot_v
     let mut match_dict: HashMap<String, Vec<String>> = HashMap::new();
 
     for mat in automaton.find_iter(&search_seq) {
-        let uniprot_key = &uniprot_id[mat.start()];
-        let peptide_match = peptides_vec[mat.pattern()].clone();
+        let uniprot_key: &String = &uniprot_id[mat.start()];
+        let peptide_match: String = peptides_vec[mat.pattern()].clone();
         match_dict.entry(uniprot_key.clone()).or_insert_with(Vec::new).push(peptide_match);
     }
 
