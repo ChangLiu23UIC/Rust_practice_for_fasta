@@ -3,6 +3,7 @@ use aho_corasick::{AhoCorasick, PatternID};
 use csv::ReaderBuilder;
 use std::fs::File;
 use std::collections::HashMap;
+use std::io;
 
 
 
@@ -38,27 +39,28 @@ fn psv_read(file_name: &str)  -> std::io::Result<Vec<String>> {
     
 }
 
-fn aho_search(protein_seq_vec: Vec<String>, peptides_vec: Vec<String>, uniprot_vec: Vec<String>) {
+
+fn aho_search(protein_seq_vec: Vec<String>, peptides_vec: Vec<String>, uniprot_vec: Vec<String>) -> io::Result<HashMap<String, Vec<String>>> {
     let search_seq: String = protein_seq_vec.join("|"); 
-    let seq_duplicate = peptides_vec.clone();
-    let automaton = AhoCorasick::new(peptides_vec).unwrap();
-    let uniprot_id: Vec<String> = uniprot_vec.iter().zip(protein_seq_vec.iter())
-    .flat_map(|(item, seq)| {
-        let mut repeated_items = std::iter::repeat(item.clone())
-            .take(seq.len())
-            .collect::<Vec<_>>();
-        repeated_items.push("|".to_string());
-        repeated_items
-    })
-    .collect();
-    let mut match_dict: HashMap<String, Vec<&String>> = HashMap::new();
-    println!("{}", &search_seq.len());
-    println!("{}", &uniprot_id.len());
-    println!("{}", &uniprot_id[0]);
+    let automaton = AhoCorasick::new(&peptides_vec).unwrap();
+
+    let uniprot_id = uniprot_vec.iter().zip(protein_seq_vec.iter())
+        .flat_map(|(item, seq)| {
+            let mut repeated_items = std::iter::repeat(item.clone())
+                .take(seq.len())
+                .collect::<Vec<_>>();
+            repeated_items.push("|".to_string());
+            repeated_items
+        })
+        .collect::<Vec<String>>();
+
+    let mut match_dict: HashMap<String, Vec<String>> = HashMap::new();
+
     for mat in automaton.find_iter(&search_seq) {
-        match_dict.entry(uniprot_id[mat.start()].to_string()).or_insert_with(Vec::new).push(&seq_duplicate[mat.pattern()]);
+        let uniprot_key = &uniprot_id[mat.start()];
+        let peptide_match = peptides_vec[mat.pattern()].clone();
+        match_dict.entry(uniprot_key.clone()).or_insert_with(Vec::new).push(peptide_match);
     }
-    for (key, values) in &match_dict {
-        println!("{}: {:?}", key, values);
-    }
+
+    Ok(match_dict)
 }
