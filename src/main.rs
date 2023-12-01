@@ -4,13 +4,16 @@ use csv::ReaderBuilder;
 use std::fs::File;
 use std::collections::HashMap;
 use std::io;
-
+use std::io::Write;
+use bokeh::{params::KERNEL9_PARAM_SET, Blur};
+use image::{io::Reader as ImageReader, ImageError};
 
 
 fn main() -> std::io::Result<()> {
     let (uniprot_vec, protein_seq_vec) = fasta_read("UniProt_Human.fasta")?;
     let peptide_vec = psv_read("psm.tsv");
-    aho_search(protein_seq_vec, peptide_vec?, uniprot_vec);
+    let match_hash = aho_search(protein_seq_vec, peptide_vec?, uniprot_vec);
+    drawing();
     Ok(())
 }
 
@@ -63,4 +66,15 @@ fn aho_search(protein_seq_vec: Vec<String>, peptides_vec: Vec<String>, uniprot_v
     }
 
     Ok(match_dict)
+}
+
+fn drawing() -> std::io::Result<()> {
+    let data = vec![1, 2, 3, 4, 5];
+    let mut file = File::create("data.csv")?;
+    
+    writeln!(file, "x")?;
+    for x in data {
+        writeln!(file, "{}", x)?;
+    }
+    Ok(())
 }
